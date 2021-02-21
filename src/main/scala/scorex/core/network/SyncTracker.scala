@@ -93,7 +93,7 @@ class SyncTracker(nvsRef: ActorRef,
     lastSyncSentTime.filter(t => (timeProvider.time() - t._2).millis > maxInterval()).keys.toSeq
   }
 
-  protected def seniorsOrEqual: Iterable[ConnectedPeer] = {
+  protected def seniorOrEqual: Iterable[ConnectedPeer] = {
     statuses.filter(t => t._2 == Older || t._2 == Equal).keys
   }
 
