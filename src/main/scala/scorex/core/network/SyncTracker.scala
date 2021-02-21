@@ -25,22 +25,22 @@ class SyncTracker(nvsRef: ActorRef,
   import History._
   import scorex.core.utils.TimeProvider.Time
 
-  private var schedule: Option[Cancellable] = None
+  protected var scheduledSyncTask: Option[Cancellable] = None
 
-  private val statuses = mutable.Map[ConnectedPeer, HistoryComparisonResult]()
-  private val lastSyncSentTime = mutable.Map[ConnectedPeer, Time]()
+  protected val statuses = mutable.Map[ConnectedPeer, HistoryComparisonResult]()
+  protected val lastSyncSentTime = mutable.Map[ConnectedPeer, Time]()
 
-  private var lastSyncInfoSentTime: Time = 0L
+  protected var lastSyncInfoSentTime: Time = 0L
 
-  private var stableSyncRegime = false
+  protected var stableSyncRegime = false
 
   def scheduleSendSyncInfo(): Unit = {
-    schedule foreach {
+    scheduledSyncTask foreach {
       _.cancel()
     }
 
     val syncTask = context.system.scheduler.scheduleWithFixedDelay(2.seconds, minInterval(),nvsRef, SendLocalSyncInfo)
-    schedule = Some(syncTask)
+    scheduledSyncTask = Some(syncTask)
   }
 
   def maxInterval(): FiniteDuration =
@@ -89,8 +89,17 @@ class SyncTracker(nvsRef: ActorRef,
 
   def elapsedTimeSinceLastSync(): Long = timeProvider.time() - lastSyncInfoSentTime
 
-  private def outdatedPeers(): Seq[ConnectedPeer] =
+  protected def outdatedPeers(): Seq[ConnectedPeer] = {
     lastSyncSentTime.filter(t => (timeProvider.time() - t._2).millis > maxInterval()).keys.toSeq
+  }
+
+  protected def seniorsOrEqual: Iterable[ConnectedPeer] = {
+    statuses.filter(t => t._2 == Older || t._2 == Equal).keys
+  }
+
+  protected def seniors: Iterable[ConnectedPeer] = {
+    statuses.filter(t => t._2 == Older).keys
+  }
 
   private def numOfSeniors(): Int = statuses.count(_._2 == Older)
 
